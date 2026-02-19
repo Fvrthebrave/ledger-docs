@@ -1,0 +1,114 @@
+# Architecture Overview
+
+The Ledger API follows a layered backend architecture designed to separate concerns and enforce financial integrity.
+
+The system is structured into distinct layers:
+
+- Routes handle HTTP routing and middleware registration
+- Controllers manage request validation and response formatting
+- Services contain core business logic and transactional boundaries
+- Database layer (PostgreSQL) enforces persistence and concurrency control
+
+---
+
+## Layer Responsibilities
+
+### Routes
+
+Routes define endpoint paths and attach authentication middleware.  
+They contain no business logic.
+
+Example:
+- POST /accounts
+- POST /accounts/transfer
+
+---
+
+### Controllers
+
+Controllers:
+
+- Validate incoming payloads
+- Parse request parameters
+- Map domain errors to HTTP responses
+- Delegate business logic to services
+
+Controllers do not perform database writes directly.
+
+---
+
+### Services
+
+The service layer contains all financial logic.
+
+Responsibilities include:
+
+- Transfer validation
+- Idempotency enforcement
+- Concurrency control
+- Atomic transaction management
+- Balance updates
+- Ledger entry creation
+
+All financial writes occur inside explicit database transactions.
+
+---
+
+## Transaction Flow (Transfer Example)
+
+When a transfer is executed:
+
+1. A transfer record is inserted (idempotency enforcement).
+2. Both accounts are locked:
+
+```sql
+SELECT id FROM accounts WHERE id IN ($1, $2) FOR UPDATE;
+```
+
+3. Locks are acquired in deterministic ID order to prevent deadlocks.
+4. The source account is debited if sufficient funds exist.
+5. The destination account is credited.
+6. Two immutable ledger entries are inserted.
+7. The transaction is committed.
+
+If any step fails, the transaction is rolled back.
+
+This guarantees atomicity and prevents partial updates.
+
+---
+
+## Data Consistency Strategy
+
+- Monetary values are stored in integer minor units (balance_cents).
+- Balances are updated only within controlled database transactions.
+- Transfers require a unique transferId to prevent replay or duplication.
+- Row-level locking prevents double-spend race conditions.
+
+---
+
+## Concurrency Model
+
+The system assumes concurrent requests are possible.
+
+To maintain strong consistency:
+
+- Row-level locks are used during transfers.
+- Debit validation occurs within the same transaction as balance update.
+- Idempotency prevents duplicate execution.
+- No floating-point arithmetic is used for currency.
+
+These safeguards ensure deterministic state transitions under load.
+
+---
+
+## Design Philosophy
+
+This architecture emphasizes:
+
+- Clear service boundaries
+- Strong transactional guarantees
+- Explicit domain modeling
+- Predictable financial state transitions
+- Testable business logic isolated from HTTP concerns
+
+The goal is correctness over complexity.

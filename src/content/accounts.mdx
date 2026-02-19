@@ -1,0 +1,140 @@
+# Accounts API
+
+The Accounts API is responsible for creating and retrieving user-owned financial accounts.
+Each account maintains a balance in minor currency units (cents) and participates in atomic transfers.
+
+All endpoints require authentication.
+
+---
+
+## Create Account
+
+**POST** /accounts
+
+Creates a new account for the authenticated user.
+
+### Request
+
+```json
+{
+  "name": "Savings"
+}
+```
+
+### Response (201)
+
+```json
+{
+  "id": 3,
+  "user_id": 1,
+  "name": "Savings",
+  "balance_cents": 0,
+  "created_at": "2026-02-19T18:00:00Z"
+}
+```
+
+Notes:
+- Accounts are scoped to the authenticated user.
+- Initial balance is always 0.
+- Balances are stored as integer minor units (cents).
+
+---
+
+## Get Account by ID
+
+**GET** /accounts/:id
+
+### Response (200)
+
+```json
+{
+  "id": 3,
+  "user_id": 1,
+  "name": "Savings",
+  "balance_cents": 5000
+}
+```
+
+Possible Errors:
+- 400 Invalid account ID
+- 404 Account not found
+
+---
+
+## Get Account Balance
+
+**GET** /accounts/:id/balance
+
+### Response (200)
+
+```json
+{
+  "balance": 5000
+}
+```
+
+Integrity Notes:
+- The balance is updated inside atomic database transactions.
+- Balance updates occur only as part of validated transfers.
+- Insufficient funds are prevented at the database level using conditional updates.
+
+---
+
+## Transfer Between Accounts
+
+**POST** /accounts/transfer
+
+Transfers funds between two accounts belonging to the authenticated user.
+
+### Request
+
+```json
+{
+  "transferId": "22222222-1111-1111-1111-111111111111",
+  "fromAccountId": 3,
+  "toAccountId": 4,
+  "amountCents": 5000
+}
+```
+
+### Success Response (200)
+
+```json
+{
+  "message": "Transfer successful"
+}
+```
+
+Possible Errors:
+- 400 InvalidTransferError
+- 409 DuplicateTransferError
+- 422 InsufficientFundsError
+- 404 AccountNotFoundError
+
+---
+
+## Concurrency & Idempotency
+
+Transfers are protected against race conditions and double-spend scenarios.
+
+```sql
+SELECT id FROM accounts WHERE id IN ($1, $2) FOR UPDATE;
+```
+- Locks are acquired in deterministic ID order to prevent deadlocks
+- Debits validate sufficient funds within the same transaction
+- Transfers require a unique transferId
+- Duplicate transferId submissions are safely rejected
+
+All balance updates occur within a single database transaction to guarantee atomicity.
+
+---
+
+## Data Model
+
+Account fields:
+
+- id: number
+- user_id: number
+- name: string
+- balance_cents: number
+- created_at: timestamp

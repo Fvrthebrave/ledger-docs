@@ -1,0 +1,172 @@
+# API Endpoints
+
+This document provides a complete reference of available endpoints in the Ledger API.
+
+All endpoints (except login and registration) require authentication.
+
+Base URL (local development):
+
+http://localhost:3000
+
+---
+
+# Authentication
+
+## POST /login
+
+Authenticates a user and returns a JWT token.
+
+Request:
+
+```json
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+Response (200):
+
+```json
+{
+  "token": "jwt-token"
+}
+```
+
+---
+
+# Users
+
+## POST /users
+
+Creates a new user.
+
+Request:
+
+```json
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+Response (201):
+
+```json
+{
+  "id": 1,
+  "email": "user@example.com"
+}
+```
+
+---
+
+# Accounts
+
+## POST /accounts
+
+Creates a new account for the authenticated user.
+
+Request:
+
+```json
+{
+  "name": "Savings"
+}
+```
+
+Response (201):
+
+```json
+{
+  "id": 3,
+  "user_id": 1,
+  "name": "Savings",
+  "balance_cents": 0
+}
+```
+
+---
+
+## GET /accounts/:id
+
+Returns account details.
+
+Response (200):
+
+```json
+{
+  "id": 3,
+  "user_id": 1,
+  "name": "Savings",
+  "balance_cents": 5000
+}
+```
+
+---
+
+## GET /accounts/:id/balance
+
+Returns the current account balance.
+
+Response (200):
+
+```json
+{
+  "balance": 5000
+}
+```
+
+---
+
+## POST /accounts/transfer
+
+Transfers funds between two accounts belonging to the authenticated user.
+
+Request:
+
+```json
+{
+  "transferId": "22222222-1111-1111-1111-111111111111",
+  "fromAccountId": 3,
+  "toAccountId": 4,
+  "amountCents": 5000
+}
+```
+
+Success Response (200):
+
+```json
+{
+  "message": "Transfer successful"
+}
+```
+
+Possible Errors:
+
+- 400 InvalidTransferError
+- 409 DuplicateTransferError
+- 422 InsufficientFundsError
+- 404 AccountNotFoundError
+
+---
+
+# Transactions
+
+## GET /transactions
+
+Returns all transactions for the authenticated user.
+
+Response (200):
+
+```json
+[
+  {
+    "id": 1,
+    "account_id": 3,
+    "amount_cents": 5000,
+    "type": "debit",
+    "transfer_id": "22222222-1111-1111-1111-111111111111"
+  }
+]
+```

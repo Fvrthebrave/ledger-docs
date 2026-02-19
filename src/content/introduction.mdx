@@ -1,0 +1,87 @@
+# Ledger API
+
+The Ledger API is a transactional financial service designed to demonstrate backend engineering practices required for systems that handle money.
+
+Unlike simple CRUD applications, financial systems require strict guarantees around precision, atomicity, concurrency, and auditability. This project focuses on implementing those guarantees clearly and intentionally.
+
+---
+
+## Purpose
+
+This project exists to model a minimal but realistic financial ledger system that enforces:
+
+- Strong consistency
+- Deterministic state transitions
+- Idempotent operations
+- Atomic database transactions
+- Explicit domain error modeling
+
+The goal is not feature breadth, but correctness.
+
+---
+
+## Core Capabilities
+
+The API supports:
+
+- User registration and authentication
+- Creation of user-owned accounts
+- Account balance retrieval
+- Atomic transfers between accounts
+- Immutable ledger transaction recording
+
+All monetary values are handled in minor currency units (cents) to avoid floating point precision issues.
+
+---
+
+## Engineering Focus
+
+This system emphasizes backend correctness over UI concerns.
+
+Key architectural decisions include:
+
+- Service-layer business logic isolation
+- Database transaction boundaries for financial writes
+- Row-level locking to prevent race conditions
+- Deterministic lock ordering to prevent deadlocks
+- Idempotent transfer processing via unique transfer identifiers
+- Typed domain errors mapped to HTTP responses
+
+---
+
+## Why This Matters
+
+Financial systems must prevent:
+
+- Double spending
+- Partial updates
+- Lost writes under concurrency
+- Rounding errors
+- Replay attacks
+
+This project demonstrates how those risks can be mitigated using practical database and service-layer techniques.
+
+---
+
+## Technology Stack
+
+- Node.js
+- Express
+- TypeScript
+- PostgreSQL
+- JWT Authentication
+
+The implementation favors clarity and correctness over abstraction complexity.
+
+---
+
+## Design Philosophy
+
+The Ledger API is intentionally small but structured to resemble real-world financial systems.
+
+It is designed to demonstrate:
+
+- Clear architectural layering
+- Strong transactional guarantees
+- Explicit and testable business rules
+- Maintainable service boundaries

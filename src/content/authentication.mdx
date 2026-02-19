@@ -1,0 +1,103 @@
+# Authentication
+
+The Ledger API uses JSON Web Tokens (JWT) for stateless authentication.
+
+All protected routes require a valid Bearer token in the Authorization header.
+
+---
+
+## Authentication Flow
+
+1. A user registers using the Users endpoint.
+2. The user authenticates via the login endpoint.
+3. The server validates credentials.
+4. A signed JWT is returned.
+5. The client includes the JWT in future requests.
+
+---
+
+## Login
+
+POST /login
+
+Authenticates a user and returns a JWT.
+
+Request:
+
+```json
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+Response (200):
+
+```json
+{
+  "token": "jwt-token"
+}
+```
+
+---
+
+## Using the Token
+
+All protected endpoints require:
+
+```http
+Authorization: Bearer <token>
+```
+
+Example:
+
+```http
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+If the token is missing or invalid, the request is rejected with 401 Unauthorized.
+
+---
+
+## Middleware Protection
+
+The system includes an authentication middleware that:
+
+- Extracts the Bearer token
+- Verifies the JWT signature
+- Attaches the authenticated user to the request object
+- Rejects invalid or expired tokens
+
+Protected routes include:
+
+- /accounts
+- /accounts/transfer
+- `/accounts/:id`
+- `/accounts/:id/balance`
+- `/transactions`
+- `/users` (authenticated actions)
+
+---
+
+## Security Considerations
+
+- Passwords are never stored in plain text.
+- JWTs are signed using a server-side secret.
+- Protected routes require verified user identity.
+- User ownership is validated at the service layer.
+
+Authorization checks ensure users can only access accounts they own.
+
+---
+
+## Design Notes
+
+Authentication is stateless.
+
+The server does not store session data. Each request is independently verified using the provided JWT.
+
+This approach:
+
+- Improves scalability
+- Simplifies horizontal scaling
+- Reduces server-side session complexity

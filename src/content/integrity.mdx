@@ -1,0 +1,116 @@
+# Financial Integrity Guarantees
+
+Financial systems require stricter design constraints than typical CRUD applications. 
+This Ledger API is built around several core integrity principles to ensure correctness, 
+auditability, and consistency.
+
+---
+
+## 1. No Floating Point Currency
+
+Currency values are never handled using floating point arithmetic.
+
+Floating point math introduces precision errors that can accumulate over time, 
+which is unacceptable in financial systems. All monetary values are stored and 
+processed as integer minor units (for example, cents) or via a precise decimal strategy.
+
+This prevents rounding drift and ensures deterministic balance calculations.
+
+---
+
+## 2. Immutable Ledger Entries
+
+Ledger entries are append-only.
+
+Once a transaction is recorded, it is never mutated or deleted. 
+Corrections must be performed using compensating entries rather than updates.
+
+This guarantees:
+- Full audit history
+- Traceability of state changes
+- Easier reconciliation and debugging
+
+---
+
+## 3. Atomic Database Transactions
+
+All financial writes occur inside database transactions.
+
+When posting a transaction:
+- Validation is performed
+- Ledger entries are written
+- Any dependent updates occur atomically
+
+If any step fails, the entire operation is rolled back.
+
+This prevents partial writes and inconsistent account states.
+
+---
+
+## 4. Derived Account Balances
+
+Account balances are derived from ledger entries rather than manually maintained.
+
+Storing derived balances can introduce inconsistencies if updates fail mid-operation. 
+By computing balances from entries (or maintaining them in strictly controlled 
+transactional flows), the system ensures consistency between historical records 
+and current state.
+
+---
+
+## 5. Defensive Validation
+
+The service layer performs strict validation for:
+- Negative amounts
+- Insufficient funds
+- Duplicate transaction attempts
+- Invalid account states
+
+Errors are returned as typed domain errors rather than generic runtime exceptions.
+
+---
+
+## 6. Concurrency Control & Double-Spend Protection
+
+Transfers are protected against race conditions using row-level locks.
+
+When performing a transfer:
+
+Both accounts are locked:
+
+```sql
+SELECT id FROM accounts WHERE id IN ($1, $2) FOR UPDATE;
+```
+
+Accounts are locked in deterministic ID order to prevent deadlocks
+
+The debit operation validates sufficient funds within the same transaction
+
+If any step fails, the transaction is rolled back
+
+Additionally, transfers are idempotent.
+
+Each transfer requires a unique transferId. If a duplicate request is received, it is safely ignored to prevent double processing.
+
+These guarantees prevent:
+
+Double-spending
+
+Lost updates
+
+Partial ledger states
+
+Replay attacks
+
+---
+
+## Design Philosophy
+
+The goal of this project is to demonstrate backend engineering practices 
+appropriate for real-world financial systems:
+
+- Clear service boundaries
+- Deterministic state transitions
+- Strong consistency guarantees
+- Explicit error handling
+- Testable, isolated business logic

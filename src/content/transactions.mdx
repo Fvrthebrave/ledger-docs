@@ -1,0 +1,108 @@
+# Transactions & Ledger
+
+The Ledger API records all monetary movements as immutable transaction entries.
+
+Transactions are append-only and represent the source of truth for historical financial activity.
+
+---
+
+## Transaction Model
+
+Each transfer produces two transaction records:
+
+- One debit entry
+- One credit entry
+
+Transaction fields:
+
+- id: number
+- account_id: number
+- amount_cents: number
+- type: "debit" | "credit"
+- transfer_id: string
+- created_at: timestamp
+
+Transactions are never updated or deleted.
+
+---
+
+## How Transfers Generate Transactions
+
+When a transfer occurs:
+
+1. A transfer record is created (idempotency protection).
+2. Both accounts are locked:
+
+```sql
+SELECT id FROM accounts WHERE id IN ($1, $2) FOR UPDATE;
+```
+
+3. The source account is debited.
+4. The destination account is credited.
+5. Two ledger entries are inserted:
+   - Debit entry for the source account
+   - Credit entry for the destination account
+6. The database transaction is committed.
+
+If any step fails, the entire operation is rolled back.
+
+---
+
+## Immutability Guarantee
+
+Ledger entries are append-only.
+
+Corrections must be made using compensating transactions rather than updates.
+
+This ensures:
+
+- Complete audit history
+- Traceability of balance changes
+- Deterministic reconstruction of financial state
+
+---
+
+## Idempotency
+
+Each transfer requires a unique transferId.
+
+If a duplicate transferId is submitted:
+
+- The transfer insert fails via ON CONFLICT DO NOTHING
+- The operation is rejected
+- No duplicate ledger entries are created
+
+This prevents:
+
+- Double processing
+- Replay attacks
+- Accidental client retries causing double charges
+
+---
+
+## Consistency Guarantees
+
+All transaction writes occur inside a single database transaction.
+
+The system guarantees:
+
+- No partial debits
+- No orphan credits
+- No double-spend race conditions
+- Strong consistency under concurrent requests
+
+---
+
+## Why Store Both Transfers and Transactions?
+
+The system separates:
+
+Transfers:
+- Represent user intent
+- Enforce idempotency
+
+Transactions:
+- Represent immutable financial ledger entries
+- Provide full audit history
+
+This separation improves clarity and auditability.
